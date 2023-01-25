@@ -39,10 +39,7 @@ const userSchema = mongoose.Schema(
       {
         description: String,
         duration: Number,
-        date: {
-          type: Date,
-          default: Date.now(),
-        },
+        date: String,
       },
     ],
   },
@@ -65,17 +62,42 @@ app.post("/api/users", async function (req, res) {
 
 // get users
 app.get("/api/users", async function (req, res) {
-  var users =await User.find({});
+  var users = await User.find({}).select("username _id");
 
   try {
-     res.json(users);
+    res.json(users);
   } catch (err) {
     res.status(500).json(err);
   }
 });
 
 // add excercises of user
-app.post("/api/users/:_id/exercises", function (req, res) {});
+app.post("/api/users/:_id/exercises", async function (req, res) {
+  let id = req.params._id;
+  var user = await User.findById(id);
+  try {
+    if (user) {
+      var dateValue = req.body.date ? new Date(req.body.date) : new Date();
+      var dateInString = dateValue.toDateString();
+      user.exercises.push({
+        description: req.body.description,
+        duration: req.body.duration,
+        date: dateInString,
+      });
+      var updatedUser = await user.save();
+      var result = {
+        username: updatedUser.username,
+        description: req.body.duration,
+        duration: req.body.duration,
+        date: dateInString,
+        _id: updatedUser._id,
+      };
+      res.json(result);
+    }
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
 
 // get excercise log of users
 app.get("/api/users/:_id/logs", function (req, res) {});
