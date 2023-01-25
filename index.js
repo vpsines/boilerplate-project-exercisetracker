@@ -32,21 +32,24 @@ mongoose.connect(
 );
 
 // user schema
-const userSchema = mongoose.Schema({
-  username: String,
-},
-{versionKey:false});
-
-// exercise schema
-const exerciseSchema = mongoose.Schema({
-  username: String,
-  description: String,
-  duration: Number,
-  date: Date,
-},{versionKey:false});
+const userSchema = mongoose.Schema(
+  {
+    username: String,
+    exercises: [
+      {
+        description: String,
+        duration: Number,
+        date: {
+          type: Date,
+          default: Date.now(),
+        },
+      },
+    ],
+  },
+  { versionKey: false }
+);
 
 var User = mongoose.model("User", userSchema);
-var Exercise = mongoose.model("Exercise", exerciseSchema);
 
 // add user
 app.post("/api/users", async function (req, res) {
