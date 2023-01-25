@@ -56,7 +56,8 @@ app.post("/api/users", async function (req, res) {
   var user = new User(req.body);
   try {
     await user.save();
-    res.json(user);
+    var result = await User.findById(user._id).select("username _id");
+    res.json(result);
   } catch (err) {
     res.status(500).send(err);
   }
