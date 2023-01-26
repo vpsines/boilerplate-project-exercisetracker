@@ -39,7 +39,7 @@ const userSchema = mongoose.Schema(
       {
         description: String,
         duration: Number,
-        date: String,
+        date: Date,
       },
     ],
   },
@@ -78,18 +78,17 @@ app.post("/api/users/:_id/exercises", async function (req, res) {
   try {
     if (user) {
       var dateValue = req.body.date ? new Date(req.body.date) : new Date();
-      var dateInString = dateValue.toDateString();
       user.exercises.push({
         description: req.body.description,
         duration: req.body.duration,
-        date: dateInString,
+        date: dateValue,
       });
       var updatedUser = await user.save();
       var result = {
         username: updatedUser.username,
         description: req.body.duration,
         duration: req.body.duration,
-        date: dateInString,
+        date: dateValue.toDateString(),
         _id: updatedUser._id,
       };
       res.json(result);
@@ -101,38 +100,96 @@ app.post("/api/users/:_id/exercises", async function (req, res) {
 
 // get excercise log of users
 app.get("/api/users/:_id/logs", async function (req, res) {
-  var fromDate = req.query.from;
-  var toDate = req.query.to;
-  var limit = parseInt(req.query.limit);
-  //var user = await User.findOne({_id:req.params._id},{exercises:{$slice: limit}}).populate("-exercises._id");
-  var users = await User.aggregate([
-    {
-      $match: { _id: mongoose.Types.ObjectId(req.params._id) },
-    },
 
-    {
-      $project: {
-        _id: 1,
-        username: 1,
-        "exercises.description": 1,
-        "exercises.duration": 1,
-        "exercises.date": 1,
-      },
+  // get query parameters
+  var fromDate = new Date(req.query.from);
+  var toDate = new Date(req.query.to);
+  var limitValue = parseInt(req.query.limit);
+
+  // filter user by id stage
+  var getUserId ={
+    $match: { _id: mongoose.Types.ObjectId(req.params._id) },
+  };
+
+  // from date and to condition
+  var fromCondition = { $gte: [ "$$item.date", fromDate ] };
+  var toCondition = { $lte: [ "$$item.date", toDate ] };
+
+  var dateConditions = [];
+
+  // push fromCondition only if from query is present
+  if(req.query.from){
+    dateConditions.push(fromCondition);
+  }
+
+    // push toCondition only if to query is present
+  if(req.query.to){
+    dateConditions.push(toCondition);
+  }
+
+  // filter by date stage
+  var fiterByDate = {
+    $project: {
+      username: 1,
+      _id:1,
+      exercises: {
+          $filter: {
+          input: "$exercises",
+          as: "item",
+          cond: { $and: dateConditions},
+          } } }
+  };
+
+  // limit stage
+  var limitLog =       {
+    $project: {
+      username: 1,
+      _id:1,
+      exercises: { $slice: ["$exercises", 0, limitValue] },
     },
-    {
-      $project: {
-        "exercises":{$slice : ["$exercises",0,limit]}
-      },
+  };
+
+  // exclude exercise id of excercise stage
+  var removeExerciseId = {
+    $project: {
+      "exercises._id": 0,
     },
-  ]).exec();
+  };
+
+  // stages for aggregating user data
+  var stages = 
+    [
+      getUserId,
+      fiterByDate,
+      removeExerciseId
+    ];
+  
+    // push limilog only if limit query is present
+  if(req.query.limit){
+    stages.append(limitLog);
+  }
+
+  // user query
+  var users = await User.aggregate(stages).exec();
+
   try {
     let user = users[0];
+
+    // convert date to req format
+    var exercises = user.exercises;
+    exercises.forEach((element,index,arr) => {
+      arr[index].date = new Date(element.date).toDateString();
+    });
+
+    // json format
     var result = {
       username: user.username,
-      count: user.exercises.length,
+      count:exercises.length,
       _id: user._id,
-      log: user.exercises,
+      log: exercises,
     };
+
+    // send result
     res.json(result);
   } catch (err) {
     res.status(500).send(err);
