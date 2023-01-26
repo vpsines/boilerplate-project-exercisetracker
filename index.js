@@ -74,13 +74,13 @@ app.get("/api/users", async function (req, res) {
 // add excercises of user
 app.post("/api/users/:_id/exercises", async function (req, res) {
   let id = req.params._id;
-  var user = await User.findById(id);
   try {
+    var user = await User.findById(id);
     if (user) {
       var dateValue = req.body.date ? new Date(req.body.date) : new Date();
       user.exercises.push({
         description: req.body.description,
-        duration: req.body.duration,
+        duration: parseInt(req.body.duration),
         date: dateValue,
       });
       var updatedUser = await user.save();
