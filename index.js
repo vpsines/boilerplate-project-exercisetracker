@@ -166,7 +166,7 @@ app.get("/api/users/:_id/logs", async function (req, res) {
   
     // push limilog only if limit query is present
   if(req.query.limit){
-    stages.append(limitLog);
+    stages.push(limitLog);
   }
 
   // user query
