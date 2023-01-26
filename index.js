@@ -86,7 +86,7 @@ app.post("/api/users/:_id/exercises", async function (req, res) {
       var updatedUser = await user.save();
       var result = {
         username: updatedUser.username,
-        description: req.body.duration,
+        description: req.body.description,
         duration: req.body.duration,
         date: dateValue.toDateString(),
         _id: updatedUser._id,
